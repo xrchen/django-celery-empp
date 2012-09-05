@@ -9,8 +9,9 @@ CONFIG = getattr(settings, 'CELERY_EMPP_TASK_CONFIG', {})
 TASK_CONFIG = {
     'name': 'djcelery_empp_send',
     'ignore_result': True,
-    }
+}
 TASK_CONFIG.update(CONFIG)
+
 
 @task(**TASK_CONFIG)
 def send_sms(receiver, content):
@@ -20,9 +21,10 @@ def send_sms(receiver, content):
         logger.debug('successfully sent sms to %s.' % receiver)
     except Exception as e:
         logger.warning('failed to send sms to %s, retrying.' % receiver)
-        send_sms.retry(exc = e)
+        send_sms.retry(exc=e)
 
-def _send_sms_with_cached_connection(receiver, content, _cache = {}):
+
+def _send_sms_with_cached_connection(receiver, content, _cache={}):
     '''
     try to use in-process connection cache
     '''

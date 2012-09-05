@@ -12,8 +12,10 @@ PORT = settings.SMS_PORT
 ACCOUNT = settings.SMS_ACCOUNT
 PASSWORD = settings.SMS_PASSWORD
 
+
 class SMSException(Exception):
     pass
+
 
 class CommandID ():
     EMPP_CONNECT                = 0x00000001
@@ -43,6 +45,7 @@ class CommandID ():
     EMPP_INTRINTMSGSTATE        = 0x00000018
     EMPP_INTRINTMSGSTATE_RESP   = 0x80000018
 
+
 class EMPPObject(object):
     _format = ''
     _field_list = []
@@ -56,24 +59,27 @@ class EMPPObject(object):
         return struct.pack(self._format, *fields)
 
     def unpack(self, data):
-        for key, value in izip(self._field_list, \
+        for key, value in izip(self._field_list,
                                struct.unpack(self._format, data)):
             setattr(self, key, value)
 
     def __repr__(self):
         return self.__class__.__name__ + '\n' + \
-            '\n'.join('%s: %s' % (field_name, getattr(self, field_name)) \
+            '\n'.join('%s: %s' % (field_name, getattr(self, field_name))
                       for field_name in self._field_list)
+
 
 class MessageHeader(EMPPObject):
     _format = '!3L'
     _field_list = ['total_length', 'command_id', 'sequence_id']
 
+
 class ConnectBody(EMPPObject):
     command_id = CommandID.EMPP_CONNECT
 
     _format = '!21s16sBL'
-    _field_list = ['account_id', 'authenticator_source', 'version', 'timestamp']
+    _field_list = ['account_id', 'authenticator_source',
+                   'version', 'timestamp']
 
     def __init__(self):
         self.account_id = ACCOUNT
@@ -88,11 +94,13 @@ class ConnectBody(EMPPObject):
         self.timestamp = now.month * 100000000 + now.day * 1000000 \
             + now.hour * 10000 + now.minute * 100 + now.second
 
+
 class ConnectRespBody(EMPPObject):
     command_id = CommandID.EMPP_CONNECT_RESP
 
     _format = '!L16sBL'
     _field_list = ['status', 'authenticator_esm', 'version', 'ability']
+
 
 class SubmitBody(EMPPObject):
     command_id = CommandID.EMPP_SUBMIT
@@ -106,7 +114,7 @@ class SubmitBody(EMPPObject):
                    'dest_terminal_type']
 
     def __init__(self, receiver, message, msg_seq, seg_total, seg_seq,
-                 delivery_report = False):
+                 delivery_report=False):
         msg_encode = '\x05\x00\x03' \
             + struct.pack('!3B', msg_seq, seg_total, seg_seq) \
             + message.encode('utf_16_be')
@@ -126,7 +134,7 @@ class SubmitBody(EMPPObject):
         self.msg_content = msg_encode
         self.msg_src = ''
         self.src_id = ACCOUNT
-        self.service_id = ACCOUNT[0 : 10]
+        self.service_id = ACCOUNT[0: 10]
         self.link_id = ''
         self.msg_level = 1
         self.fee_user_type = 2
@@ -138,14 +146,17 @@ class SubmitBody(EMPPObject):
         self.fee_code = '0'
         self.dest_terminal_type = 0
 
+
 class SubmitRespBody(EMPPObject):
     command_id = CommandID.EMPP_SUBMIT_RESP
 
     _format = '!10sL'
     _field_list = ['msg_id', 'result']
 
+
 class ActiveTestBody(EMPPObject):
     command_id = CommandID.EMPP_ACTIVE_TEST
+
 
 class ActiveTestRespBody(EMPPObject):
     command_id = CommandID.EMPP_ACTIVE_TEST_RESP
@@ -153,11 +164,14 @@ class ActiveTestRespBody(EMPPObject):
     _format = '!B'
     _field_list = ['reserved']
 
+
 class TerminateBody(EMPPObject):
     command_id = CommandID.EMPP_TERMINATE
 
+
 class TerminateRespBody(EMPPObject):
     command_id = CommandID.EMPP_TERMINATE_RESP
+
 
 def sequence_generator(max_value):
     while True:
@@ -166,12 +180,14 @@ def sequence_generator(max_value):
             yield i
             i += 1
 
+
 def get_body_class(command_id):
     for klass in [ConnectRespBody, SubmitRespBody, ActiveTestRespBody,
                   TerminateBody]:
         if klass.command_id == command_id:
             return klass
     raise ValueError('unknown command id %d' % command_id)
+
 
 class Connection(object):
     BUF_SIZE = 4096
@@ -238,7 +254,7 @@ class Connection(object):
         segments = []
         while content:
             segments.append(content[: self.SINGLE_MESSAGE_SIZE])
-            content = content[self.SINGLE_MESSAGE_SIZE: ]
+            content = content[self.SINGLE_MESSAGE_SIZE:]
         return segments
 
     def _send_single_packet(self, body):
@@ -257,7 +273,7 @@ class Connection(object):
             return
         body = get_body_class(header.command_id)()
         body.unpack(self.buffer[header.size: header.total_length])
-        self.buffer = self.buffer[header.total_length: ]
+        self.buffer = self.buffer[header.total_length:]
         body.header = header
         return body
 
@@ -271,6 +287,7 @@ class Connection(object):
                 self.buffer += data
             else:
                 raise SMSException('remote connection closed')
+
 
 def get_connection():
     c = Connection()
